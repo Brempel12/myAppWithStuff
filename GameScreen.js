@@ -10,7 +10,6 @@ const GameScreen = ({ switchScreen }) => {
     const [dealerRevealedCards, setDealerRevealedCards] = useState(1);
     const [userCash, setUserCash] = useState(1000);
     const [bet, setBet] = useState(0);
-    const [lastBet, setLastBet] = useState(0);
     const [gameActive, setGameActive] = useState(false);
 
     useEffect(() => {
@@ -24,18 +23,15 @@ const GameScreen = ({ switchScreen }) => {
             Alert.alert("Invalid bet", "Please place a valid bet to start the game.");
             return;
         }
-        setLastBet(bet);
-        const newDeck = deck.length > 10 ? deck : createDeck();
-        const initialUserCards = [newDeck.pop(), newDeck.pop()];
-        const initialDealerCards = [newDeck.pop(), newDeck.pop()];
-        setUserCards(initialUserCards);
-        setDealerCards(initialDealerCards);
-        setDeck(newDeck);
+        setDeck(deck.length > 10 ? deck : createDeck());
+        setUserCards([deck.pop(), deck.pop()]);
+        setDealerCards([deck.pop(), deck.pop()]);
         setDealerRevealedCards(1);
         setGameActive(true);
     };
 
     const handleHit = () => {
+        if (!gameActive) return;
         const newCards = [...userCards, deck.pop()];
         setUserCards(newCards);
         if (calculateTotal(newCards) > 21) {
@@ -53,16 +49,12 @@ const GameScreen = ({ switchScreen }) => {
         if (!gameActive) return;
         let currentTotal = calculateTotal(dealerCards.slice(0, dealerRevealedCards));
         if (currentTotal < 17) {
-            setTimeout(() => {
-                const newCard = deck.pop();
-                const newDealerCards = [...dealerCards, newCard];
-                setDealerCards(newDealerCards);
-                setDeck(deck);
-                setDealerRevealedCards(dealerRevealedCards + 1);
-                handleDealerTurn();
-            }, 1000);
+            const newCard = deck.pop();
+            const newDealerCards = [...dealerCards, newCard];
+            setDealerCards(newDealerCards);
+            setDealerRevealedCards(dealerRevealedCards + 1);
         } else {
-            setTimeout(() => determineWinner(), 1000);
+            determineWinner();
         }
     };
 
@@ -90,6 +82,11 @@ const GameScreen = ({ switchScreen }) => {
         }
     };
 
+    const resetBet = () => {
+        setUserCash(userCash + bet); // Refund the current bet before resetting
+        setBet(0);
+    };
+
     const renderChips = () => {
         const chipValues = [5, 10, 25];
         const chipColors = ['#4CAF50', '#2196F3', '#FFC107'];
@@ -105,10 +102,6 @@ const GameScreen = ({ switchScreen }) => {
             <View style={styles.chipsContainer}>
                 {renderChips()}
             </View>
-            <TouchableOpacity style={styles.betChip} onPress={() => setBet(lastBet)}>
-                <Text style={styles.betAmount}>{`$${bet}`}</Text>
-                <Text style={styles.betLabel}>Bet</Text>
-            </TouchableOpacity>
             <Text style={styles.header}>Dealer's Cards:</Text>
             <View style={styles.cardRow}>
                 {dealerCards.slice(0, dealerRevealedCards).map((card, index) => (
@@ -125,11 +118,16 @@ const GameScreen = ({ switchScreen }) => {
             {!gameActive && <TouchableOpacity style={styles.actionButton} onPress={startGame}>
                 <Text style={styles.buttonText}>Start Game</Text>
             </TouchableOpacity>}
-            {gameActive && <TouchableOpacity style={styles.actionButton} onPress={handleHit}>
-                <Text style={styles.buttonText}>Hit</Text>
-            </TouchableOpacity>}
-            {gameActive && <TouchableOpacity style={styles.actionButton} onPress={stand}>
-                <Text style={styles.buttonText}>Stand</Text>
+            {gameActive && <>
+                <TouchableOpacity style={styles.actionButton} onPress={handleHit}>
+                    <Text style={styles.buttonText}>Hit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={stand}>
+                    <Text style={styles.buttonText}>Stand</Text>
+                </TouchableOpacity>
+            </>}
+            {!gameActive && <TouchableOpacity style={styles.actionButton} onPress={resetBet}>
+                <Text style={styles.buttonText}>Reset Bet</Text>
             </TouchableOpacity>}
             <TouchableOpacity style={styles.actionButton} onPress={() => switchScreen('Home')}>
                 <Text style={styles.buttonText}>Back to Home</Text>
@@ -144,7 +142,7 @@ const styles = StyleSheet.create({
         padding: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#121212'  // Dark background color
+        backgroundColor: '#121212'
     },
     header: {
         fontSize: 22,
@@ -196,7 +194,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         elevation: 4,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height:1 },
         shadowOpacity: 0.2,
         shadowRadius: 1
     },
